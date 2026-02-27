@@ -81,72 +81,13 @@ jobs:
           provenance: false
           push: true
 
-  # Build arm64 image
-  build-arm64:
-    runs-on: blacksmith-16vcpu-ubuntu-2404-arm
-    permissions:
-      packages: write
-      contents: read
-    outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Resolve image tags (arm64)
-        id: tags
-        shell: bash
-        env:
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        run: |
-          set -euo pipefail
-          tags=()
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            tags+=("${IMAGE}:main-arm64")
-          fi
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            version="${GITHUB_REF#refs/tags/v}"
-            tags+=("${IMAGE}:${version}-arm64")
-          fi
-          if [[ ${#tags[@]} -eq 0 ]]; then
-            echo "::error::No arm64 tags resolved for ref ${GITHUB_REF}"
-            exit 1
-          fi
-          {
-            echo "value<<EOF"
-            printf "%s\n" "${tags[@]}"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Build and push arm64 image
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/arm64
-          tags: ${{ steps.tags.outputs.value }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-cache:arm64
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-cache:arm64,mode=max
-          provenance: false
-          push: true
-
-  # Create multi-platform manifest
+  # Create manifest
   create-manifest:
     runs-on: blacksmith-16vcpu-ubuntu-2404
     permissions:
       packages: write
       contents: read
-    needs: [build-amd64, build-arm64]
+    needs: [build-amd64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -186,7 +127,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create and push manifest
+      - name: Push manifest
         shell: bash
         run: |
           set -euo pipefail
@@ -197,5 +138,4 @@ jobs:
             args+=("-t" "$tag")
           done
           docker buildx imagetools create "${args[@]}" \
-            ${{ needs.build-amd64.outputs.image-digest }} \
-            ${{ needs.build-arm64.outputs.image-digest }}
+            ${{ needs.build-amd64.outputs.image-digest }}

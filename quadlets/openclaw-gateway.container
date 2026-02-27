@@ -1,0 +1,23 @@
+[Unit]
+Description=OpenClaw Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=${OPENCLAW_IMAGE:-openclaw:local}
+PublishPort=18789:18789/tcp
+PublishPort=18790:18790/tcp
+Volume=openclaw-config:/home/node/.openclaw
+Volume=openclaw-workspace:/home/node/.openclaw/workspace
+Environment=HOME=/home/node
+Environment=TERM=xterm-256color
+Environment=OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+Environment=CLAUDE_AI_SESSION_KEY=${CLAUDE_AI_SESSION_KEY}
+Environment=CLAUDE_WEB_SESSION_KEY=${CLAUDE_WEB_SESSION_KEY}
+Environment=CLAUDE_WEB_COOKIE=${CLAUDE_WEB_COOKIE}
+Exec=node dist/index.js gateway --bind lan --port 18789
+Init=yes
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
