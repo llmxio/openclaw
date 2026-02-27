@@ -54,8 +54,8 @@ RUN pnpm build && \
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 USER root
-RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
-    && chmod 755 /app/openclaw.mjs
+RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw && \
+    chmod 755 /app/openclaw.mjs
 
 
 # Security hardening: Run as non-root user
@@ -63,10 +63,13 @@ RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
 # This reduces the attack surface by preventing container escape via root privileges
 USER node
 
-ENV HOMEBREW_NO_ENV_HINTS=1 \
+ENV HOME=/home/node \
+    NODE_ENV=production \
+    HOMEBREW_NO_ENV_HINTS=1 \
     BUN_INSTALL="/home/node/.bun" \
     PATH="$BUN_INSTALL/bin:$PATH" \
-    PNPM_HOME="/home/node/.local/share/pnpm"
+    PNPM_HOME="/home/node/.local/share/pnpm" \
+    TERM=xterm-256color
 
 RUN SHELL=bash pnpm setup && \
     bash -c "env PATH=$PNPM_HOME:$PATH pnpm install -g @tobilu/qmd"
