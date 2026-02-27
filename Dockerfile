@@ -1,21 +1,22 @@
-FROM node:22-bookworm@sha256:cd7bcd2e7a1e6f72052feb023c7f6b722205d3fcab7bbcbd2d1bfdab10b1e935
+FROM node:22-bookworm
 
 # Install Bun (required for build scripts)
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
-RUN corepack enable
+RUN corepack enable && corepack use pnpm@latest
 
 WORKDIR /app
 RUN chown node:node /app
 
-ARG OPENCLAW_DOCKER_APT_PACKAGES=""
+ARG OPENCLAW_DOCKER_APT_PACKAGES="curl ca-certificates wget gnupg lsb-release sudo build-essential"
 RUN if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
-      apt-get update && \
-      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES && \
-      apt-get clean && \
-      rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
-    fi
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
+    fi && \
+    echo "node ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/node
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY --chown=node:node ui/package.json ./ui/package.json
@@ -34,19 +35,28 @@ RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
 USER root
 ARG OPENCLAW_INSTALL_BROWSER=""
 RUN if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
-      apt-get update && \
-      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb && \
-      mkdir -p /home/node/.cache/ms-playwright && \
-      PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
-      node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
-      chown -R node:node /home/node/.cache/ms-playwright && \
-      apt-get clean && \
-      rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb && \
+    mkdir -p /home/node/.cache/ms-playwright && \
+    PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
+    node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
+    chown -R node:node /home/node/.cache/ms-playwright && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
     fi
 
 USER node
 COPY --chown=node:node . .
 RUN pnpm build
+
+# Install Homebrew and GCC for native module builds (e.g. canvas).
+RUN CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
+    echo >> ~/.bashrc && \
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc && \
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
+    brew install --quiet gcc && \
+    brew install --quiet oven-sh/bun/bun
+
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
@@ -54,7 +64,7 @@ RUN pnpm ui:build
 # Expose the CLI binary without requiring npm global writes as non-root.
 USER root
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
- && chmod 755 /app/openclaw.mjs
+    && chmod 755 /app/openclaw.mjs
 
 ENV NODE_ENV=production
 
@@ -63,10 +73,18 @@ ENV NODE_ENV=production
 # This reduces the attack surface by preventing container escape via root privileges
 USER node
 
+ENV HOMEBREW_NO_ENV_HINTS=1 \
+    BUN_INSTALL="/home/node/.bun" \
+    PATH="$BUN_INSTALL/bin:$PATH" \
+    PNPM_HOME="/home/node/.local/share/pnpm"
+
+RUN SHELL=bash pnpm setup && \
+    bash -c "env PATH=$PNPM_HOME:$PATH pnpm install -g @tobilu/qmd"
+
 # Start gateway server with default config.
 # Binds to loopback (127.0.0.1) by default for security.
 #
 # For container platforms requiring external health checks:
 #   1. Set OPENCLAW_GATEWAY_TOKEN or OPENCLAW_GATEWAY_PASSWORD env var
 #   2. Override CMD: ["node","openclaw.mjs","gateway","--allow-unconfigured","--bind","lan"]
-CMD ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]
+CMD ["node", "openclaw.mjs", "gateway", "--allow-unconfigured", "--bind", "lan"]
