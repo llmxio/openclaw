@@ -52,7 +52,7 @@ RUN OPENCLAW_PREFER_PNPM=1 pnpm build && \
     brew install --quiet oven-sh/bun/bun && \
     OPENCLAW_PREFER_PNPM=1 pnpm ui:build && \
     mkdir -p /home/node/.bun && chown -R node:node /home/node/.bun && \
-    bun install -g "@tobilu/qmd@^1.0.7"
+    cd /home/node && bun install -g "@tobilu/qmd@^1.0.7"
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 USER root
