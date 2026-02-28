@@ -1,8 +1,8 @@
 FROM node:22-bookworm
 
 # Install Bun (required for build scripts)
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
+# RUN curl -fsSL https://bun.sh/install | bash
+# ENV PATH="/root/.bun/bin:${PATH}"
 
 RUN corepack enable && corepack use pnpm@latest
 
@@ -40,16 +40,16 @@ RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
 
 # copy source after dependencies so rebuilds are cached when changing code
 COPY --chown=node:node . .
-RUN pnpm build && \
+RUN OPENCLAW_PREFER_PNPM=1 pnpm build && \
     # Install Homebrew, GCC and Bun (for native modules) in same layer
     CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
     echo >> /home/node/.bashrc && \
     echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     brew install --quiet gcc && \
-    brew install --quiet oven-sh/bun/bun && \
-    # Force pnpm for UI build
-    OPENCLAW_PREFER_PNPM=1 pnpm ui:build
+    brew install --quiet oven-sh/bun/bun
+# Force pnpm for UI build
+# OPENCLAW_PREFER_PNPM=1 pnpm ui:build
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 USER root
@@ -64,7 +64,8 @@ USER node
 
 ENV HOME=/home/node \
     NODE_ENV=production \
-    HOMEBREW_NO_ENV_HINTS=1
+    HOMEBREW_NO_ENV_HINTS=1 \
+    OPENCLAW_PREFER_PNPM=1
 
 # Start gateway server with default config.
 # Binds to loopback (127.0.0.1) by default for security.
