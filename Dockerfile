@@ -67,7 +67,8 @@ USER node
 
 ENV HOME=/home/node \
     NODE_ENV=production \
-    HOMEBREW_NO_ENV_HINTS=1
+    HOMEBREW_NO_ENV_HINTS=1 \
+    PATH="/home/node/.bun/bin:${PATH}"
 
 # Start gateway server with default config.
 # Binds to loopback (127.0.0.1) by default for security.
