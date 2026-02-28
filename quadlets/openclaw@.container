@@ -2,6 +2,7 @@
 Description=OpenClaw %i Container
 After=network-online.target
 Wants=network-online.target
+PartOf=openclaw.target
 
 [Container]
 Environment=OPENCLAW_GATEWAY_PORT=18789
@@ -15,6 +16,3 @@ Volume=%h/openclaw/%i/workspace:/home/node/.openclaw/workspace
 RunInit=yes
 UserNS=keep-id
 Timezone=local
-
-[Install]
-WantedBy=multi-user.target

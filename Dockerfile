@@ -2,8 +2,7 @@ FROM node:22-bookworm
 
 # Install Bun (required for build scripts)
 RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}" \
-    NODE_ENV=production
+ENV PATH="/root/.bun/bin:${PATH}"
 
 RUN corepack enable && corepack use pnpm@latest
 
@@ -44,8 +43,8 @@ COPY --chown=node:node . .
 RUN pnpm build && \
     # Install Homebrew, GCC and Bun (for native modules) in same layer
     CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    echo >> ~/.bashrc && \
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc && \
+    echo >> /home/node/.bashrc && \
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     brew install --quiet gcc && \
     brew install --quiet oven-sh/bun/bun && \
@@ -65,14 +64,7 @@ USER node
 
 ENV HOME=/home/node \
     NODE_ENV=production \
-    HOMEBREW_NO_ENV_HINTS=1 \
-    BUN_INSTALL="/home/node/.bun" \
-    PATH="$BUN_INSTALL/bin:$PATH" \
-    PNPM_HOME="/home/node/.local/share/pnpm" \
-    TERM=xterm-256color
-
-RUN SHELL=bash pnpm setup && \
-    bash -c "env PATH=$PNPM_HOME:$PATH pnpm install -g @tobilu/qmd"
+    HOMEBREW_NO_ENV_HINTS=1
 
 # Start gateway server with default config.
 # Binds to loopback (127.0.0.1) by default for security.
