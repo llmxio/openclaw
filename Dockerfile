@@ -26,14 +26,13 @@ RUN if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends brave-browser && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
-    fi
+    fi && \
+    mkdir -p /home/node && chown -R node:node /home/node
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY --chown=node:node ui/package.json ./ui/package.json
 COPY --chown=node:node patches ./patches
 COPY --chown=node:node scripts ./scripts
-
-RUN mkdir -p /home/node && chown -R node:node /home/node
 
 USER node
 # Reduce OOM risk on low-memory hosts during dependency installation.
@@ -52,8 +51,8 @@ RUN OPENCLAW_PREFER_PNPM=1 pnpm build && \
     brew install --quiet gcc && \
     brew install --quiet oven-sh/bun/bun && \
     OPENCLAW_PREFER_PNPM=1 pnpm ui:build && \
-    ./node_modules/.bin/qmd status
-
+    mkdir -p /home/node/.bun && chown -R node:node /home/node/.bun && \
+    cd /home/node && bun install -g "@tobilu/qmd@^1.0.7"
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 USER root
@@ -68,8 +67,7 @@ USER node
 
 ENV HOME=/home/node \
     NODE_ENV=production \
-    HOMEBREW_NO_ENV_HINTS=1 \
-    OPENCLAW_PREFER_PNPM=1
+    HOMEBREW_NO_ENV_HINTS=1
 
 # Start gateway server with default config.
 # Binds to loopback (127.0.0.1) by default for security.
