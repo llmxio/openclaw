@@ -2,7 +2,6 @@
 Description=OpenClaw %i Container
 After=network-online.target
 Wants=network-online.target
-PartOf=openclaw.target
 
 [Container]
 Environment=OPENCLAW_GATEWAY_PORT=18789
@@ -11,8 +10,15 @@ Image=ghcr.io/llmxio/openclaw:latest
 AutoUpdate=registry
 Label=app=openclaw-%i
 ContainerName=openclaw-%i
+HostName=openclaw-%i
 Volume=%h/openclaw/%i/config:/home/node/.openclaw
-Volume=%h/openclaw/%i/workspace:/home/node/.openclaw/workspace
-RunInit=yes
+Volume=%h/openclaw/%i/kb:/home/node/kb
+Volume=openclaw-bun.volume:/home/node/.bun
+Volume=openclaw-go.volume:/home/node/go
+Network=openclaw
 UserNS=keep-id
 Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=5

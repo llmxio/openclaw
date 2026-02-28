@@ -9,7 +9,7 @@ RUN corepack enable
 WORKDIR /app
 RUN chown node:node /app
 
-ARG OPENCLAW_DOCKER_APT_PACKAGES="curl ca-certificates wget gnupg lsb-release sudo build-essential"
+ARG OPENCLAW_DOCKER_APT_PACKAGES="curl ca-certificates wget gnupg lsb-release sudo build-essential python3-pip"
 ARG OPENCLAW_INSTALL_BROWSER="1"
 
 # install base packages, node sudoers and optionally the Brave browser in one layer
@@ -27,6 +27,9 @@ RUN if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends brave-browser && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
     fi && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    ln -s /root/.local/bin/uv /usr/local/bin/uv && \
+    ln -s /root/.local/bin/uvx /usr/local/bin/uvx && \
     mkdir -p /home/node && chown -R node:node /home/node
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
@@ -37,9 +40,7 @@ COPY --chown=node:node scripts ./scripts
 USER node
 # Reduce OOM risk on low-memory hosts during dependency installation.
 # Docker builds on small VMs may otherwise fail with "Killed" (exit 137).
-RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile && \
-    pnpm rebuild && \
-    npm rebuild better-sqlite3 --build-from-source
+RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
 
 # copy source after dependencies so rebuilds are cached when changing code
 COPY --chown=node:node . .
