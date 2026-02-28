@@ -45,17 +45,15 @@ RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile && \
 # copy source after dependencies so rebuilds are cached when changing code
 COPY --chown=node:node . .
 RUN OPENCLAW_PREFER_PNPM=1 pnpm build && \
-    # Install Homebrew, GCC and Bun (for native modules) in same layer
     CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
     echo >> /home/node/.bashrc && \
     echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     brew install --quiet gcc && \
-    brew install --quiet oven-sh/bun/bun &&\
+    brew install --quiet oven-sh/bun/bun && \
+    OPENCLAW_PREFER_PNPM=1 pnpm ui:build && \
     ./node_modules/.bin/qmd status
 
-# Force pnpm for UI build
-# OPENCLAW_PREFER_PNPM=1 pnpm ui:build
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 USER root
