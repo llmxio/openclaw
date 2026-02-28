@@ -39,7 +39,8 @@ USER node
 # Reduce OOM risk on low-memory hosts during dependency installation.
 # Docker builds on small VMs may otherwise fail with "Killed" (exit 137).
 RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile && \
-    pnpm rebuild
+    pnpm rebuild && \
+    npm rebuild better-sqlite3 --build-from-source
 
 # copy source after dependencies so rebuilds are cached when changing code
 COPY --chown=node:node . .
@@ -50,7 +51,9 @@ RUN OPENCLAW_PREFER_PNPM=1 pnpm build && \
     echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     brew install --quiet gcc && \
-    brew install --quiet oven-sh/bun/bun
+    brew install --quiet oven-sh/bun/bun &&\
+    ./node_modules/.bin/qmd status
+
 # Force pnpm for UI build
 # OPENCLAW_PREFER_PNPM=1 pnpm ui:build
 
