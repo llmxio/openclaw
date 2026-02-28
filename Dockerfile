@@ -4,7 +4,7 @@ FROM node:22-bookworm
 # RUN curl -fsSL https://bun.sh/install | bash
 # ENV PATH="/root/.bun/bin:${PATH}"
 
-RUN corepack enable && corepack use pnpm@latest
+RUN corepack enable
 
 WORKDIR /app
 RUN chown node:node /app
@@ -33,10 +33,13 @@ COPY --chown=node:node ui/package.json ./ui/package.json
 COPY --chown=node:node patches ./patches
 COPY --chown=node:node scripts ./scripts
 
+RUN mkdir -p /home/node && chown -R node:node /home/node
+
 USER node
 # Reduce OOM risk on low-memory hosts during dependency installation.
 # Docker builds on small VMs may otherwise fail with "Killed" (exit 137).
-RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
+RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile && \
+    pnpm rebuild
 
 # copy source after dependencies so rebuilds are cached when changing code
 COPY --chown=node:node . .
