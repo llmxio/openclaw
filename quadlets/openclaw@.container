@@ -1,0 +1,18 @@
+[Unit]
+Description=OpenClaw %i Container
+After=network-online.target
+Wants=network-online.target
+PartOf=openclaw.target
+
+[Container]
+Environment=OPENCLAW_GATEWAY_PORT=18789
+Environment=OPENCLAW_BRIDGE_PORT=18790
+Image=ghcr.io/llmxio/openclaw:latest
+AutoUpdate=registry
+Label=app=openclaw-%i
+ContainerName=openclaw-%i
+Volume=%h/openclaw/%i/config:/home/node/.openclaw
+Volume=%h/openclaw/%i/workspace:/home/node/.openclaw/workspace
+RunInit=yes
+UserNS=keep-id
+Timezone=local
